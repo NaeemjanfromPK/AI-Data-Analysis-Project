@@ -1,0 +1,19 @@
+# --- Agent framework ---
+langgraph>=0.2.60
+langchain-core>=0.3.29
+
+# --- LLM providers (dual mode) ---
+langchain-openai>=0.2.14      # Option A: OpenAI API key
+langchain-ollama>=0.2.2       # Option B: local models via Ollama
+
+# --- Data stack ---
+pandas>=2.2.0
+numpy>=1.26.0
+matplotlib>=3.8.0
+openpyxl>=3.1.0               # .xlsx ingestion
+tabulate>=0.9.0               # markdown tables
+
+# --- Plumbing ---
+pydantic>=2.9.0
+python-dotenv>=1.0.1
+rich>=13.9.0
