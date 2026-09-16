@@ -79,10 +79,16 @@ def parse_subsections(body: str) -> dict:
     return sub
 
 
+# def strip_image_markdown(text: str) -> str:
+#     """Remove ![...](...) image tags -- figures are rendered separately via st.image,
+#     since a filesystem-relative path in markdown does not resolve in the browser."""
+#     return re.sub(r"!\[[^\]]*\]\([^)]*\)", "", text).strip()
 def strip_image_markdown(text: str) -> str:
-    """Remove ![...](...) image tags -- figures are rendered separately via st.image,
+    """Remove image tags -- figures are rendered separately via st.image,
     since a filesystem-relative path in markdown does not resolve in the browser."""
     return re.sub(r"!\[[^\]]*\]\([^)]*\)", "", text).strip()
+
+
 
 
 # ---------------------------------------------------------------- main area
