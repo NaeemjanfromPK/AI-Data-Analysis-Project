@@ -19,6 +19,33 @@ import streamlit as st
 from agent.config import settings
 from agent.graph import run_agent
 
+
+# ---------------------------------------------------------------- backend check
+def _ollama_reachable() -> bool:
+    """Quick probe to see if Ollama is actually running."""
+    import socket
+    try:
+        host = settings.ollama_base_url.replace("http://", "").replace("https://", "").split(":")[0]
+        port = int(settings.ollama_base_url.split(":")[-1]) if ":" in settings.ollama_base_url else 11434
+        with socket.create_connection((host, port), timeout=2):
+            return True
+    except Exception:
+        return False
+
+
+_backend_ok = True
+if settings.provider == "ollama" and not _ollama_reachable():
+    _backend_ok = False
+    st.warning(
+        "⚠️ **Ollama is not running.** "
+        "This app requires a local Ollama server. "
+        "Please install Ollama and run `ollama serve` in a terminal, then refresh this page.  \n\n"
+        "📖 [Setup instructions](https://github.com/NaeemjanfromPK/AI-Data-Analysis-Project#backend-a--local-via-ollama)"
+    )
+
+
+
+
 st.set_page_config(page_title="AI Data Analyst", layout="wide")
 
 DEFAULT_PROMPT = (
@@ -93,7 +120,8 @@ user_prompt = st.text_area(
     label_visibility="collapsed",
 )
 
-run_button = st.button("Run analysis", type="primary", disabled=data_path is None)
+# run_button = st.button("Run analysis", type="primary", disabled=data_path is None)
+run_button = st.button("Run analysis", type="primary", disabled=(data_path is None or not _backend_ok))
 
 # ---------------------------------------------------------------- run agent
 # Results are stashed in session_state so they SURVIVE later reruns caused
