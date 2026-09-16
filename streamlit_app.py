@@ -383,9 +383,20 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+# with st.sidebar:
+#     st.markdown('<div class="sidebar-spacer"></div>', unsafe_allow_html=True)
+#     st.markdown("### Backend")
+#     st.write(f"**Provider:** `{getattr(settings, 'llm_provider', 'ollama')}`")
+#     st.write(f"**Model:** `{getattr(settings, 'ollama_model', 'qwen2.5-coder:7b')}`")
+#     st.info("Runs entirely on your machine. No data leaves your computer.")
+
 with st.sidebar:
     st.markdown('<div class="sidebar-spacer"></div>', unsafe_allow_html=True)
     st.markdown("### Backend")
-    st.write(f"**Provider:** `{getattr(settings, 'llm_provider', 'ollama')}`")
-    st.write(f"**Model:** `{getattr(settings, 'ollama_model', 'qwen2.5-coder:7b')}`")
+    if _backend_loaded and _settings:
+        st.write(f"**Provider:** `{getattr(_settings, 'llm_provider', 'ollama')}`")
+        st.write(f"**Model:** `{getattr(_settings, 'ollama_model', 'qwen2.5-coder:7b')}`")
+    else:
+        st.write("**Provider:** `not loaded`")
+        st.write("**Model:** `not loaded`")
     st.info("Runs entirely on your machine. No data leaves your computer.")
