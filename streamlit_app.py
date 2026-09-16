@@ -1,12 +1,67 @@
+# """
+# Streamlit UI for the AI Data Analyst agent.
+
+# Save this file in the project ROOT (same folder as the `agent/` package),
+# then run:
+#     streamlit run streamlit_app.py
+
+# Make sure your `python_basic` conda env is active and Ollama is running
+# before launching.
+# """
+# import re
+# import tempfile
+# import uuid
+# from datetime import datetime
+# from pathlib import Path
+
+# import streamlit as st
+
+# from agent.config import settings
+# from agent.graph import run_agent
+
+
+# # ---------------------------------------------------------------- backend check
+# def _ollama_reachable() -> bool:
+#     """Quick probe to see if Ollama is actually running."""
+#     import socket
+#     try:
+#         host = settings.ollama_base_url.replace("http://", "").replace("https://", "").split(":")[0]
+#         port = int(settings.ollama_base_url.split(":")[-1]) if ":" in settings.ollama_base_url else 11434
+#         with socket.create_connection((host, port), timeout=2):
+#             return True
+#     except Exception:
+#         return False
+
+
+# _backend_ok = True
+# if settings.provider == "ollama" and not _ollama_reachable():
+#     _backend_ok = False
+#     st.warning(
+#         "⚠️ **Ollama is not running.** "
+#         "This app requires a local Ollama server. "
+#         "Please install Ollama and run `ollama serve` in a terminal, then refresh this page.  \n\n"
+#         "📖 [Setup instructions](https://github.com/NaeemjanfromPK/AI-Data-Analysis-Project#backend-a--local-via-ollama)"
+#     )
+
+
+
+
+# st.set_page_config(page_title="AI Data Analyst", layout="wide")
+
+# DEFAULT_PROMPT = (
+#     "Give me a general overview of this dataset: the key trends, the top and "
+#     "bottom performers across the main categories, and anything unusual worth "
+#     "flagging to a stakeholder."
+# )
+
+# SAMPLE_DATASET = Path("data/sample_sales.csv")
+
+
+# ----------------------------------------------------------------------------------------------
+
+
 """
 Streamlit UI for the AI Data Analyst agent.
-
-Save this file in the project ROOT (same folder as the `agent/` package),
-then run:
-    streamlit run streamlit_app.py
-
-Make sure your `python_basic` conda env is active and Ollama is running
-before launching.
 """
 import re
 import tempfile
@@ -16,37 +71,63 @@ from pathlib import Path
 
 import streamlit as st
 
-from agent.config import settings
-from agent.graph import run_agent
+# ---------------------------------------------------------------- lazy agent imports
+_settings = None
+_run_agent = None
+_import_error = ""
+
+def _load_agent():
+    """Lazy import so a missing backend doesn't kill the whole UI."""
+    global _settings, _run_agent, _import_error
+    if _run_agent is not None:
+        return True
+    try:
+        from agent.config import settings
+        from agent.graph import run_agent
+        _settings = settings
+        _run_agent = run_agent
+        return True
+    except Exception as e:
+        _import_error = f"Backend failed to load: {type(e).__name__}: {e}"
+        return False
 
 
-# ---------------------------------------------------------------- backend check
 def _ollama_reachable() -> bool:
     """Quick probe to see if Ollama is actually running."""
     import socket
     try:
-        host = settings.ollama_base_url.replace("http://", "").replace("https://", "").split(":")[0]
-        port = int(settings.ollama_base_url.split(":")[-1]) if ":" in settings.ollama_base_url else 11434
+        host = _settings.ollama_base_url.replace("http://", "").replace("https://", "").split(":")[0]
+        port = int(_settings.ollama_base_url.split(":")[-1]) if ":" in _settings.ollama_base_url else 11434
         with socket.create_connection((host, port), timeout=2):
             return True
     except Exception:
         return False
 
 
-_backend_ok = True
-if settings.provider == "ollama" and not _ollama_reachable():
+# ---------------------------------------------------------------- page config
+st.set_page_config(page_title="AI Data Analyst", layout="wide")
+
+# Try to load the backend once on startup
+_backend_loaded = _load_agent()
+
+if _backend_loaded:
+    _backend_ok = True
+    if _settings.provider == "ollama" and not _ollama_reachable():
+        _backend_ok = False
+        st.warning(
+            "⚠️ **Ollama is not running.** "
+            "This app requires a local Ollama server. "
+            "Please install Ollama and run `ollama serve` in a terminal, then refresh this page.  \n\n"
+            "📖 [Setup instructions](https://github.com/NaeemjanfromPK/AI-Data-Analysis-Project#backend-a--local-via-ollama)"
+        )
+else:
     _backend_ok = False
-    st.warning(
-        "⚠️ **Ollama is not running.** "
-        "This app requires a local Ollama server. "
-        "Please install Ollama and run `ollama serve` in a terminal, then refresh this page.  \n\n"
-        "📖 [Setup instructions](https://github.com/NaeemjanfromPK/AI-Data-Analysis-Project#backend-a--local-via-ollama)"
+    st.error(f"⚠️ {_import_error}")
+    st.info(
+        "This app is designed to run locally with Ollama. "
+        "Clone the repo and run: `streamlit run streamlit_app.py`"
     )
 
-
-
-
-st.set_page_config(page_title="AI Data Analyst", layout="wide")
 
 DEFAULT_PROMPT = (
     "Give me a general overview of this dataset: the key trends, the top and "
@@ -55,6 +136,10 @@ DEFAULT_PROMPT = (
 )
 
 SAMPLE_DATASET = Path("data/sample_sales.csv")
+
+
+
+
 
 # ---------------------------------------------------------------- helpers
 def parse_report_sections(report_text: str) -> dict:
@@ -146,12 +231,14 @@ if run_button:
 
     with st.spinner("Running the agent... this can take a minute or two on a local model."):
         try:
-            run_agent(str(data_path), effective_prompt, run_id=run_id, on_event=on_event)
+            # run_agent(str(data_path), effective_prompt, run_id=run_id, on_event=on_event)
+            _run_agent(str(data_path), effective_prompt, run_id=run_id, on_event=on_event)
         except Exception as e:
             st.error(f"The agent raised an error: {e}")
             st.stop()
 
-    run_dir = settings.runs_dir / run_id
+    # run_dir = settings.runs_dir / run_id
+    run_dir = _settings.runs_dir / run_id
     report_path = run_dir / "report.md"
 
     if not report_path.exists():
@@ -203,10 +290,14 @@ if last_run:
     with meta_col:
         st.write(f"**Dataset:** `{last_run['data_path']}`")
         st.write(f"**Run ID:** `{run_id}`")
+        # st.write(
+        #     f"**LLM backend:** `{getattr(settings, 'llm_provider', 'ollama')} / "
+        #     f"{getattr(settings, 'ollama_model', 'qwen2.5-coder:7b')}`"
+        # )
         st.write(
-            f"**LLM backend:** `{getattr(settings, 'llm_provider', 'ollama')} / "
-            f"{getattr(settings, 'ollama_model', 'qwen2.5-coder:7b')}`"
-        )
+                f"**LLM backend:** `{getattr(_settings, 'llm_provider', 'ollama')} / "
+                f"{getattr(_settings, 'ollama_model', 'qwen2.5-coder:7b')}`"
+                )
     with export_col1:
         if clean_csv_path.exists():
             st.download_button(
